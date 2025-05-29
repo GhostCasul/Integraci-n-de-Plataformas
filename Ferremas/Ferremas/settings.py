@@ -27,6 +27,19 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+import os
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "Ferremasito/static"),  # Solo archivos CSS/JS, NO imágenes de productos
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Carpeta donde se recopilan los archivos estáticos
+
+
 
 # Application definition
 
@@ -52,10 +65,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'Ferremas.urls'
 
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'Templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -74,12 +90,21 @@ WSGI_APPLICATION = 'Ferremas.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'defaultdb',
+        #'USER': 'avnadmin',
+        #'PASSWORD': 'tubasededatos',
+        'HOST': 'ferremas-duocuc-227a.l.aivencloud.com',
+        'PORT': '15285',
+        'OPTIONS': {
+            'ssl': {'ssl-mode': 'REQUIRED'}
+        }
     }
 }
+
 
 
 # Password validation

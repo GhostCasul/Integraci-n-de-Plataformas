@@ -1,0 +1,161 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Productos - Ferremas</title>
+  <link rel="stylesheet" href="{% static 'Producto.css' %}" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+
+<body>
+  <header>
+    <nav class="navbar navbar-expand-lg" style="background-color: #555 !important;">
+      <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">Ferremas</a>
+        <div class="collapse navbar-collapse">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Inicio</a></li>
+            <li class="nav-item"><a class="nav-link active" href="{% url 'productos_html' %}">Productos</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'ver_carrito' %}">Carrito</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container py-4">
+    <h1 class="text-center mb-4">Nuestros Productos</h1>
+
+    <!-- Selector de moneda -->
+    <div class="mb-4 text-end">
+      <label for="moneda" class="form-label me-2 fw-bold">Moneda:</label>
+      <select id="moneda" class="form-select d-inline-block" style="width: 150px;"
+        data-api-url="{% url 'tipo_cambio' %}">
+        <option value="CLP" selected>Pesos Chilenos (CLP)</option>
+        <option value="USD">Dólares (USD)</option>
+      </select>
+    </div>
+
+    <!-- Contenedor de productos -->
+    <div class="row" id="productos-container">
+      <!-- Productos se insertan dinámicamente aquí -->
+    </div>
+  </main>
+
+  <footer class="footer bg-primary text-white text-center py-3" style="background-color: #555 !important;">
+    <p>&copy; 2025 Ferremas - Todos los derechos reservados</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const monedaSelect = document.getElementById('moneda');
+    const productosContainer = document.getElementById('productos-container');
+    const tipoCambioApiUrl = "{% url 'tipo_cambio' %}";
+    const productosApiUrl = "{% url 'api_productos' %}";
+
+    let productosData = [];
+
+    // Función para obtener token CSRF desde cookie
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+          cookie = cookie.trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+
+    async function cargarProductos() {
+      try {
+        const response = await fetch(productosApiUrl);
+        const data = await response.json();
+        productosData = data.productos;
+        mostrarProductos();
+        actualizarPrecios();
+      } catch (error) {
+        productosContainer.innerHTML = `<div class="alert alert-danger">Error al cargar productos.</div>`;
+      }
+    }
+
+    function mostrarProductos() {
+      productosContainer.innerHTML = '';
+
+      productosData.forEach(producto => {
+        const imagen = producto.imagen_url ? producto.imagen_url : 'https://via.placeholder.com/300x200?text=Sin+Imagen';
+
+        const card = `
+        <div class="col-md-4 mb-4 producto-card" data-precio="${producto.precio}">
+          <div class="card h-100">
+            <img src="${imagen}" class="card-img-top" alt="${producto.nombre}">
+            <div class="card-body">
+              <h5 class="card-title">${producto.nombre}</h5>
+              <p class="card-text">${producto.descripcion}</p>
+              <p class="card-text fw-bold precio">$ ${producto.precio} CLP</p>
+              <form method="POST" action="/carrito/agregar/${producto.id}/">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${csrftoken}">
+                <div class="input-group mb-2">
+                  <input type="number" name="cantidad" class="form-control" value="1" min="1" max="${producto.stock}" />
+                  <button class="btn btn-success" type="submit">Agregar al Carrito</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        `;
+        productosContainer.innerHTML += card;
+      });
+    }
+
+
+
+
+    async function actualizarPrecios() {
+      const moneda = monedaSelect.value;
+      const tarjetas = document.querySelectorAll('.producto-card');
+
+      if (moneda === 'USD') {
+        try {
+          const res = await fetch(tipoCambioApiUrl);
+          const data = await res.json();
+          const tipoCambio = data.tipo_cambio;
+
+          tarjetas.forEach(card => {
+            const precioCLP = parseFloat(card.getAttribute('data-precio'));
+            const precioUSD = (precioCLP * tipoCambio).toFixed(2);
+            card.querySelector('.precio').textContent = `$ ${precioUSD} USD`;
+          });
+        } catch {
+          alert('No se pudo obtener el tipo de cambio. Mostrando precios en CLP.');
+          monedaSelect.value = 'CLP';
+          tarjetas.forEach(card => {
+            const precioCLP = parseFloat(card.getAttribute('data-precio'));
+            card.querySelector('.precio').textContent = `$ ${precioCLP} CLP`;
+          });
+        }
+      } else {
+        tarjetas.forEach(card => {
+          const precioCLP = parseFloat(card.getAttribute('data-precio'));
+          card.querySelector('.precio').textContent = `$ ${precioCLP} CLP`;
+        });
+      }
+    }
+
+    monedaSelect.addEventListener('change', actualizarPrecios);
+    cargarProductos();
+  </script>
+
+</body>
+
+</html>

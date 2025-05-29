@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrito - Ferremas</title>
+  <link rel="stylesheet" href="{% static 'Carrito.css' %}" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+  <header>
+    <nav class="navbar navbar-expand-lg" style="background-color: #555 !important;">
+      <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">Ferremas</a>
+        <div class="collapse navbar-collapse">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Inicio</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'productos_html' %}">Productos</a></li>
+            <li class="nav-item"><a class="nav-link active" href="{% url 'ver_carrito' %}">Carrito</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container py-4">
+    <h1 class="text-center mb-4">Tu Carrito</h1>
+
+    <!-- Selector de moneda -->
+    <div class="mb-4 text-end">
+      <label for="moneda" class="form-label me-2 fw-bold">Moneda:</label>
+      <select id="moneda" class="form-select d-inline-block" style="width: 150px;">
+        <option value="CLP" selected>Pesos Chilenos (CLP)</option>
+        <option value="USD">Dólares (USD)</option>
+      </select>
+    </div>
+
+    {% if carrito %}
+    <table class="table table-bordered">
+      <thead class="table-light">
+        <tr>
+          <th>Producto</th>
+          <th>Cantidad</th>
+          <th>Precio Unitario</th>
+          <th>Total</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in carrito %}
+        <tr data-precio="{{ item.producto.precio }}" data-total="{{ item.total }}">
+          <td>{{ item.producto.nombre }}</td>
+          <td>{{ item.cantidad }}</td>
+          <td class="precio-unitario">$ {{ item.producto.precio }} CLP</td>
+          <td class="precio-total">$ {{ item.total|floatformat:2 }} CLP</td>
+          <td>
+            <form method="POST" action="{% url 'eliminar_del_carrito' item.producto_id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="text-end fs-4 fw-bold" id="total-carrito">
+      Total a pagar: $ {{ total|floatformat:2 }} CLP
+    </div>
+
+    {% else %}
+    <p class="text-center fs-5">Tu carrito está vacío.</p>
+    {% endif %}
+  </main>
+
+  <footer class="footer bg-primary text-white text-center py-3" style="background-color: #555 !important;">
+    <p>&copy; 2025 Ferremas - Todos los derechos reservados</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const monedaSelect = document.getElementById('moneda');
+    const tipoCambioApiUrl = "{% url 'tipo_cambio' %}";
+
+    monedaSelect.addEventListener('change', async () => {
+      const moneda = monedaSelect.value;
+      const filas = document.querySelectorAll('tbody tr');
+      const totalCarrito = document.getElementById('total-carrito');
+
+      if (moneda === 'USD') {
+        const response = await fetch(tipoCambioApiUrl);
+        const data = await response.json();
+        const tipoCambio = data.tipo_cambio;
+
+        let totalUSD = 0;
+
+        filas.forEach(fila => {
+          const precioCLP = parseFloat(fila.getAttribute('data-precio'));
+          const totalCLP = parseFloat(fila.getAttribute('data-total'));
+          const precioUSD = (precioCLP * tipoCambio).toFixed(2);
+          const totalFilaUSD = (totalCLP * tipoCambio).toFixed(2);
+          fila.querySelector('.precio-unitario').textContent = `$ ${precioUSD} USD`;
+          fila.querySelector('.precio-total').textContent = `$ ${totalFilaUSD} USD`;
+          totalUSD += parseFloat(totalFilaUSD);
+        });
+
+        totalCarrito.textContent = `Total a pagar: $ ${totalUSD.toFixed(2)} USD`;
+
+      } else {
+        let totalCLP = 0;
+
+        filas.forEach(fila => {
+          const precioCLP = parseFloat(fila.getAttribute('data-precio'));
+          const totalFilaCLP = parseFloat(fila.getAttribute('data-total'));
+          fila.querySelector('.precio-unitario').textContent = `$ ${precioCLP} CLP`;
+          fila.querySelector('.precio-total').textContent = `$ ${totalFilaCLP.toFixed(2)} CLP`;
+          totalCLP += totalFilaCLP;
+        });
+
+        totalCarrito.textContent = `Total a pagar: $ ${totalCLP.toFixed(2)} CLP`;
+      }
+    });
+  </script>
+</body>
+</html>
